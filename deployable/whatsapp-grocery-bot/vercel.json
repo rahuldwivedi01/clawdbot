@@ -1,9 +1,18 @@
 {
-  "buildCommand": "",
-  "outputDirectory": "",
-  "framework": null,
-  "rewrites": [
-    { "source": "/webhook", "destination": "/api/webhook" },
-    { "source": "/", "destination": "/api/health" }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/webhook", "dest": "/api/webhook" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
