@@ -1,0 +1,20 @@
+{
+  "name": "@clawdbot/grocery-bot",
+  "version": "2026.1.25",
+  "type": "module",
+  "description": "Clawdbot grocery price comparison plugin for Indian quick-commerce platforms",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "dependencies": {
+    "linkedom": "^0.18.9"
+  },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  },
+  "peerDependencies": {
+    "clawdbot": "*"
+  }
+}

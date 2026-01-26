@@ -1,0 +1,109 @@
+{
+  "id": "grocery-bot",
+  "uiHints": {
+    "enabled": {
+      "label": "Enable Grocery Bot",
+      "help": "Enable grocery price comparison functionality"
+    },
+    "location.lat": {
+      "label": "Latitude",
+      "placeholder": "12.9716"
+    },
+    "location.lng": {
+      "label": "Longitude",
+      "placeholder": "77.5946"
+    },
+    "location.city": {
+      "label": "City",
+      "placeholder": "Bengaluru"
+    },
+    "cache.enabled": {
+      "label": "Enable Price Cache"
+    },
+    "cache.ttlMinutes": {
+      "label": "Cache TTL (minutes)",
+      "placeholder": "30"
+    },
+    "rateLimit.requestsPerMinute": {
+      "label": "Rate Limit (requests/min)"
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "location": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "lat": {
+            "type": "number",
+            "description": "Latitude for location-based pricing"
+          },
+          "lng": {
+            "type": "number",
+            "description": "Longitude for location-based pricing"
+          },
+          "city": {
+            "type": "string",
+            "description": "City name"
+          },
+          "pincode": {
+            "type": "string",
+            "description": "Pincode for delivery area"
+          }
+        }
+      },
+      "cache": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "ttlMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "default": 30
+          }
+        }
+      },
+      "rateLimit": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestsPerMinute": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "default": 10
+          }
+        }
+      },
+      "platforms": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "swiggy": {
+            "type": "boolean",
+            "default": true
+          },
+          "blinkit": {
+            "type": "boolean",
+            "default": true
+          },
+          "zepto": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  }
+}
