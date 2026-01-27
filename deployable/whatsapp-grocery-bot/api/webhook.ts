@@ -45,13 +45,23 @@ function handleVerification(req: VercelRequest, res: VercelResponse) {
 
   const verifyToken = getVerifyToken();
 
+  // Debug: log what we're comparing
+  console.log(`Verification attempt: mode=${mode}, token=${token}, expected=${verifyToken}, challenge=${challenge}`);
+
   if (mode === "subscribe" && token === verifyToken) {
     console.log("Webhook verified successfully");
     return res.status(200).send(challenge);
   }
 
-  console.error("Webhook verification failed");
-  return res.status(403).json({ error: "Verification failed" });
+  console.error(`Webhook verification failed: mode=${mode}, tokenMatch=${token === verifyToken}, hasVerifyToken=${!!verifyToken}`);
+  return res.status(403).json({
+    error: "Verification failed",
+    debug: {
+      modeOk: mode === "subscribe",
+      tokenConfigured: !!verifyToken,
+      tokenLength: verifyToken?.length ?? 0
+    }
+  });
 }
 
 async function handleWebhook(req: VercelRequest, res: VercelResponse) {
