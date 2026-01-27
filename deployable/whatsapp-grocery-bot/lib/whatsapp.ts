@@ -1,12 +1,16 @@
 import type { WhatsAppWebhookPayload, WhatsAppMessage, WhatsAppSendMessagePayload } from "./types.js";
 
-// Environment variables (support both naming conventions)
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN ?? "";
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? process.env.WEBHOOK_VERIFY_TOKEN ?? "";
-
+// Read environment variables dynamically to ensure they're available at runtime
 export function getVerifyToken(): string {
-  return WHATSAPP_VERIFY_TOKEN;
+  return process.env.WHATSAPP_VERIFY_TOKEN ?? process.env.WEBHOOK_VERIFY_TOKEN ?? "";
+}
+
+function getWhatsAppToken(): string {
+  return process.env.WHATSAPP_TOKEN ?? "";
+}
+
+function getPhoneNumberId(): string {
+  return process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
 }
 
 export function extractMessages(payload: WhatsAppWebhookPayload): WhatsAppMessage[] {
@@ -41,12 +45,15 @@ export function extractMessages(payload: WhatsAppWebhookPayload): WhatsAppMessag
 }
 
 export async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+  const token = getWhatsAppToken();
+  const phoneNumberId = getPhoneNumberId();
+
+  if (!token || !phoneNumberId) {
     console.error("WhatsApp credentials not configured");
     return false;
   }
 
-  const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
 
   const payload: WhatsAppSendMessagePayload = {
     messaging_product: "whatsapp",
@@ -63,7 +70,7 @@ export async function sendWhatsAppMessage(to: string, text: string): Promise<boo
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -84,15 +91,18 @@ export async function sendWhatsAppMessage(to: string, text: string): Promise<boo
 }
 
 export async function markMessageAsRead(messageId: string): Promise<void> {
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return;
+  const token = getWhatsAppToken();
+  const phoneNumberId = getPhoneNumberId();
 
-  const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  if (!token || !phoneNumberId) return;
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
 
   try {
     await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
