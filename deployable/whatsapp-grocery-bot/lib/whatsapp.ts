@@ -1,9 +1,9 @@
 import type { WhatsAppWebhookPayload, WhatsAppMessage, WhatsAppSendMessagePayload } from "./types.js";
 
-// Environment variables
+// Environment variables (support both naming conventions)
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? process.env.WEBHOOK_VERIFY_TOKEN ?? "";
 
 export function getVerifyToken(): string {
   return WHATSAPP_VERIFY_TOKEN;
