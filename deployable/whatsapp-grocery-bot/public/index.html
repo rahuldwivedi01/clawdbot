@@ -392,7 +392,7 @@
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
-      <p>Fetching prices from all platforms...</p>
+      <p id="loadingText">Fetching prices from all platforms...</p>
     </div>
 
     <div class="error-box" id="error">
@@ -453,8 +453,26 @@
         params.set('city', city);
         if (pincode) params.set('pincode', pincode);
 
-        const response = await fetch(`/api/compare?${params.toString()}`);
-        const data = await response.json();
+        let data = null;
+
+        // Try Molt Bot agent first (live browsing)
+        try {
+          const agentRes = await fetch(`/api/agent-compare?${params.toString()}`);
+          if (agentRes.ok) {
+            const agentData = await agentRes.json();
+            if (agentData.platforms && !agentData.error) {
+              data = agentData;
+            }
+          }
+        } catch {
+          // Agent not available, fall through to demo
+        }
+
+        // Fall back to demo/scraper endpoint
+        if (!data) {
+          const response = await fetch(`/api/compare?${params.toString()}`);
+          data = await response.json();
+        }
 
         if (data.error) {
           showError(data.error);
@@ -486,8 +504,8 @@
       // Data source badge
       const badge = document.getElementById('dataSourceBadge');
       const demoNotice = document.getElementById('demoNotice');
-      if (data.dataSource === 'live') {
-        badge.textContent = 'LIVE';
+      if (data.dataSource === 'live' || data.dataSource === 'agent') {
+        badge.textContent = data.dataSource === 'agent' ? 'LIVE (MOLT BOT)' : 'LIVE';
         badge.className = 'data-source-badge live';
         demoNotice.classList.remove('active');
       } else {

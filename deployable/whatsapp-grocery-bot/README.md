@@ -1,258 +1,144 @@
-# WhatsApp Grocery Price Comparison Bot
+# Grocery Price Checker
 
-A WhatsApp bot that compares grocery prices across **Swiggy Instamart**, **Blinkit**, and **Zepto** in India. Users can send a list of grocery items and receive instant price comparisons with recommendations for the cheapest platform.
+A web app that compares grocery prices across **Swiggy Instamart**, **Blinkit**, **Zepto**, and **BigBasket** in India. Optionally powered by **Molt Bot** (Clawdbot) for live browser-based price fetching.
 
 ## Features
 
-- Compare prices across 3 major Indian quick-commerce platforms
-- Location-based pricing (default: Bengaluru)
-- Automatic recommendation for the cheapest option
-- Simple comma-separated item input
-- Fast responses with price caching
+- Compare prices across 4 major Indian quick-commerce platforms
+- Location-based pricing (18 Indian cities supported)
+- Cheapest platform recommendation with savings calculation
+- Two modes: **Estimated** (instant) and **Live** (Molt Bot browser browsing)
+- Dark theme UI, mobile-responsive
 - Easy deployment to Vercel
 
-## Demo
+## How It Works
 
-Send a message like:
-```
-rice, dal, milk, bread
-```
+### Mode 1: Estimated Prices (Default)
 
-Get a response like:
-```
-🛒 Grocery Price Comparison
-📍 Location: Bengaluru
-🔍 Items: rice, dal, milk, bread
+Works immediately, no setup needed. Shows realistic estimated prices based on recent market data. The API first attempts to call live platform APIs, and falls back to curated demo data when platforms block the request (common from datacenter IPs).
 
-🟠 Swiggy Instamart
-   • rice: ₹299 (15% off)
-     India Gate Basmati Rice - 1 kg
-   • dal: ₹145
-     Toor Dal - 1 kg
-   ...
-   Total: ₹589 (4 items)
+### Mode 2: Live Prices via Molt Bot
 
-🟡 Blinkit
-   ...
-   Total: ₹549 (4 items)
-
-🟣 Zepto
-   ...
-   Total: ₹565 (4 items)
-
-💡 RECOMMENDATION
-Blinkit is cheapest! Save ₹40 compared to Swiggy Instamart.
-```
+When configured, the app calls a Molt Bot (Clawdbot) agent that uses a real Chromium browser to visit each platform, search for items, and extract actual current prices. This bypasses API blocking because it renders pages like a real user.
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18 or higher
-- A Meta Developer account
-- A WhatsApp Business account
-- Vercel account (free tier works)
-
-### 1. Clone and Setup
+### 1. Deploy to Vercel (Estimated Mode)
 
 ```bash
-# Clone this repository
-git clone https://github.com/YOUR_USERNAME/whatsapp-grocery-bot.git
-cd whatsapp-grocery-bot
+# Clone the repo
+git clone https://github.com/rahuldwivedi01/wa_pricechecker_bot.git
+cd wa_pricechecker_bot
 
-# Install dependencies
-npm install
-
-# Copy environment template
-cp .env.example .env
+# Deploy to Vercel
+npx vercel --prod
 ```
 
-### 2. Set Up WhatsApp Cloud API
+Or connect the GitHub repo to Vercel via the dashboard for auto-deploy.
 
-1. Go to [Meta Developer Portal](https://developers.facebook.com/)
-2. Create a new app (Business type)
-3. Add the WhatsApp product to your app
-4. Go to WhatsApp → API Setup
-5. Note down:
-   - **Phone number ID** (under "From" section)
-   - **Temporary access token** (click "Generate" - valid for 24 hours)
+That's it - the app works immediately with estimated prices.
 
-For production, create a permanent access token:
-1. Go to Business Settings → System Users
-2. Create a system user with admin access
-3. Generate a token with `whatsapp_business_messaging` permission
+### 2. Enable Live Prices (Optional - Molt Bot Setup)
 
-### 3. Configure Environment Variables
+To get real-time prices, set up Molt Bot with browser capabilities:
 
-Edit `.env` with your credentials:
-
-```env
-WHATSAPP_TOKEN=your_access_token_here
-WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
-WHATSAPP_VERIFY_TOKEN=create_a_random_string_here
-DEFAULT_CITY=Bengaluru
-DEFAULT_LAT=12.9716
-DEFAULT_LNG=77.5946
-```
-
-### 4. Deploy to Vercel
-
-#### Option A: Deploy with Vercel CLI
+#### Step 1: Install Molt Bot
 
 ```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Deploy
-vercel
-
-# Set environment variables
-vercel env add WHATSAPP_TOKEN
-vercel env add WHATSAPP_PHONE_NUMBER_ID
-vercel env add WHATSAPP_VERIFY_TOKEN
-vercel env add DEFAULT_CITY
-vercel env add DEFAULT_LAT
-vercel env add DEFAULT_LNG
-
-# Deploy to production
-vercel --prod
+npm install -g clawdbot
 ```
 
-#### Option B: Deploy via Vercel Dashboard
+#### Step 2: Configure Browser
 
-1. Push code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your GitHub repository
-4. Add environment variables in Project Settings → Environment Variables
-5. Deploy
+```bash
+clawdbot config set browser.enabled true
+```
 
-### 5. Configure WhatsApp Webhook
+#### Step 3: Start the Gateway
 
-After deployment, configure the webhook in Meta Developer Portal:
+```bash
+clawdbot gateway run --bind lan --port 18789
+```
 
-1. Go to WhatsApp → Configuration
-2. Click "Edit" next to Webhook
-3. Enter:
-   - **Callback URL**: `https://your-app.vercel.app/webhook`
-   - **Verify token**: Same as your `WHATSAPP_VERIFY_TOKEN`
-4. Click "Verify and Save"
-5. Subscribe to `messages` webhook field
+#### Step 4: Expose Gateway Publicly
 
-### 6. Test Your Bot
+Use Cloudflare Tunnel (free) to make the gateway reachable from Vercel:
 
-1. Add your phone number to the WhatsApp test numbers
-2. Send a message to the WhatsApp Business number
-3. Try: `rice, dal, milk`
+```bash
+npx cloudflared tunnel --url http://localhost:18789
+```
+
+This gives you a public URL like `https://abc123.trycloudflare.com`.
+
+#### Step 5: Set Vercel Environment Variables
+
+In the Vercel dashboard (Project Settings > Environment Variables):
+
+| Variable | Value |
+|----------|-------|
+| `MOLTBOT_GATEWAY_URL` | `https://abc123.trycloudflare.com` |
+| `MOLTBOT_API_TOKEN` | _(optional, if gateway auth is enabled)_ |
+
+#### Step 6: Redeploy
+
+Trigger a redeploy in Vercel. The app will now try Molt Bot first for live prices, falling back to estimated prices if the agent is unavailable.
 
 ## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Health check and status |
-| `/webhook` | GET | WhatsApp webhook verification |
-| `/webhook` | POST | Receive WhatsApp messages |
-| `/api/test?items=rice,dal` | GET | Test price comparison without WhatsApp |
+| `/` | GET | Web UI |
+| `/api/compare?items=rice,dal&city=Bengaluru` | GET | Price comparison (estimated + scraper fallback) |
+| `/api/agent-compare?items=rice,dal&city=Bengaluru` | GET | Price comparison via Molt Bot (live browsing) |
+| `/api/setup` | GET | Check Molt Bot configuration status |
+| `/api/health` | GET | Health check |
 
-## Testing Without WhatsApp
+## Supported Cities
 
-You can test the price comparison directly:
-
-```bash
-# Test locally
-npm run dev
-
-# Then visit:
-# http://localhost:3000/api/test?items=rice,dal,milk
-```
-
-Or after deployment:
-```bash
-curl "https://your-app.vercel.app/api/test?items=rice,dal,milk"
-```
-
-## Changing Location
-
-To change the default location (city), update the environment variables:
-
-```env
-DEFAULT_CITY=Mumbai
-DEFAULT_LAT=19.0760
-DEFAULT_LNG=72.8777
-```
-
-Common Indian city coordinates:
-- **Bengaluru**: 12.9716, 77.5946
-- **Mumbai**: 19.0760, 72.8777
-- **Delhi**: 28.6139, 77.2090
-- **Chennai**: 13.0827, 80.2707
-- **Hyderabad**: 17.3850, 78.4867
-- **Pune**: 18.5204, 73.8567
-- **Kolkata**: 22.5726, 88.3639
+Bengaluru, Mumbai, Delhi, Chennai, Hyderabad, Pune, Kolkata, Ahmedabad, Jaipur, Lucknow, Gurgaon/Gurugram, Noida, Chandigarh, Indore, Kochi
 
 ## Project Structure
 
 ```
-whatsapp-grocery-bot/
+wa_pricechecker_bot/
 ├── api/
-│   ├── webhook.ts      # WhatsApp webhook handler
-│   ├── health.ts       # Health check endpoint
-│   └── test.ts         # Test endpoint for price comparison
+│   ├── compare.ts          # Price comparison (scrapers + demo fallback)
+│   ├── agent-compare.ts    # Molt Bot agent bridge (live browsing)
+│   ├── setup.ts            # Molt Bot setup status
+│   ├── webhook.ts          # WhatsApp webhook (future)
+│   ├── health.ts           # Health check
+│   └── index.ts            # Root API handler
 ├── lib/
-│   ├── types.ts        # TypeScript type definitions
-│   ├── comparison.ts   # Price comparison logic
-│   ├── whatsapp.ts     # WhatsApp API helpers
-│   └── scrapers/
-│       ├── index.ts    # Scraper exports
-│       ├── swiggy.ts   # Swiggy Instamart scraper
-│       ├── blinkit.ts  # Blinkit scraper
-│       └── zepto.ts    # Zepto scraper
-├── .env.example        # Environment variables template
-├── vercel.json         # Vercel configuration
+│   ├── types.ts            # TypeScript types
+│   ├── comparison.ts       # Price comparison logic
+│   ├── whatsapp.ts         # WhatsApp helpers
+│   └── scrapers/           # Platform scrapers
+├── public/
+│   └── index.html          # Web UI
+├── vercel.json             # Vercel config
 ├── package.json
-├── tsconfig.json
-└── README.md
+└── tsconfig.json
 ```
 
-## Limitations & Notes
+## Architecture
 
-1. **API Stability**: The scrapers use undocumented APIs from the platforms. They may break if the platforms change their APIs.
+```
+User → Vercel Web App (index.html)
+         ↓
+       /api/agent-compare (tries Molt Bot first)
+         ↓ (if available)
+       Molt Bot Gateway → Browser Tool → Platform Websites
+         ↓ (if not available, falls back to)
+       /api/compare → Direct API scraping + demo data fallback
+```
 
-2. **Rate Limiting**: The bot includes basic rate limiting, but excessive usage may get blocked by the platforms.
+## Limitations
 
-3. **Caching**: Prices are cached for 30 minutes to reduce API calls. The cache resets on serverless cold starts.
-
-4. **Location**: Prices vary by location. Ensure you set the correct coordinates for your area.
-
-5. **WhatsApp Limits**: The free tier of WhatsApp Cloud API has conversation limits. Check Meta's documentation for current limits.
-
-## Troubleshooting
-
-### Webhook verification fails
-- Ensure `WHATSAPP_VERIFY_TOKEN` matches exactly what you entered in Meta Developer Portal
-- Check that your Vercel deployment is successful
-
-### Not receiving messages
-- Verify webhook subscription includes `messages`
-- Check Vercel function logs for errors
-- Ensure phone number is added to test numbers (for development)
-
-### Prices not found
-- The platforms may have changed their API structure
-- Try different search terms (e.g., "toor dal" instead of "dal")
-- Check if the platforms are available in your location
-
-### Rate limited
-- Wait a few minutes before retrying
-- Consider implementing more aggressive caching
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. **Estimated mode**: Prices are realistic estimates, not live. They serve as a useful baseline but may differ from actual platform prices.
+2. **Live mode**: Requires a server running Molt Bot with Chromium. Browser-based scraping takes 1-3 minutes for a full comparison.
+3. **Platform APIs**: Direct API scraping is blocked by most platforms from datacenter IPs. This is why the Molt Bot browser approach exists.
+4. **Location**: Prices vary by delivery location. Results are most accurate for the selected city center.
 
 ## License
 
-MIT License - feel free to use this for personal or commercial projects.
-
-## Disclaimer
-
-This project is not affiliated with Swiggy, Blinkit, Zepto, Meta, or WhatsApp. It uses undocumented APIs which may break at any time. Use at your own risk.
+MIT
