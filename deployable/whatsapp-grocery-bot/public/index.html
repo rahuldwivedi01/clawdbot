@@ -163,28 +163,6 @@
       font-size: 13px;
     }
 
-    .data-source-badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 12px;
-      margin-left: 10px;
-      vertical-align: middle;
-    }
-
-    .data-source-badge.demo {
-      background: #3a3000;
-      color: #f5c518;
-      border: 1px solid #5a4a00;
-    }
-
-    .data-source-badge.live {
-      background: #0f250f;
-      color: #4CAF50;
-      border: 1px solid #2d5a2d;
-    }
-
     .recommendation {
       background: linear-gradient(135deg, #1b3a1b, #0f250f);
       border: 1px solid #2d5a2d;
@@ -280,6 +258,7 @@
 
     .item-info {
       flex: 1;
+      min-width: 0;
     }
 
     .item-query {
@@ -294,8 +273,24 @@
       margin-top: 2px;
     }
 
+    .item-link {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #4CAF50;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .item-link:hover {
+      color: #66cc6a;
+      text-decoration: underline;
+    }
+
     .item-price {
       text-align: right;
+      flex-shrink: 0;
+      margin-left: 12px;
     }
 
     .item-price .price {
@@ -325,7 +320,7 @@
       background: #2a1a1a;
       border: 1px solid #5a2a2a;
       border-radius: 12px;
-      padding: 20px;
+      padding: 24px;
       text-align: center;
       display: none;
       margin-bottom: 24px;
@@ -338,19 +333,45 @@
       font-size: 14px;
     }
 
-    .demo-notice {
-      background: #2a2400;
-      border: 1px solid #4a3a00;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
+    .error-box .error-subtitle {
+      color: #888;
       font-size: 13px;
-      color: #d4a800;
-      text-align: center;
-      display: none;
+      margin-top: 8px;
     }
 
-    .demo-notice.active { display: block; }
+    .search-links {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .search-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #ccc;
+      text-decoration: none;
+      font-size: 13px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .search-links a:hover {
+      border-color: #555;
+      color: #fff;
+    }
+
+    .search-links .link-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
 
     footer {
       text-align: center;
@@ -362,6 +383,7 @@
     @media (max-width: 600px) {
       .row { flex-direction: column; }
       .row .input-group.small { flex: 1; }
+      .search-links { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
@@ -397,15 +419,14 @@
 
     <div class="error-box" id="error">
       <p id="errorText"></p>
+      <p class="error-subtitle" id="errorSubtitle"></p>
+      <div class="search-links" id="errorLinks"></div>
     </div>
 
     <div class="results" id="results">
       <div class="results-header">
-        <h2>Price Comparison <span class="data-source-badge" id="dataSourceBadge"></span></h2>
+        <h2>Price Comparison</h2>
         <span class="items-searched" id="itemsSearched"></span>
-      </div>
-      <div class="demo-notice" id="demoNotice">
-        Showing estimated prices based on recent market data. Live price fetching from platforms is being improved.
       </div>
       <div class="recommendation" id="recommendation" style="display:none">
         <h3 id="recTitle"></h3>
@@ -415,33 +436,46 @@
     </div>
 
     <footer>
-      <p>Prices are estimates based on recent market data. Actual prices may vary by location and time.</p>
+      <p>Prices fetched live from platforms. Results may vary by location and availability.</p>
     </footer>
   </div>
 
   <script>
+    const PLATFORM_COLORS = {
+      swiggy: '#fc8019',
+      blinkit: '#f5c518',
+      zepto: '#7b2ff7',
+      bigbasket: '#84c225',
+    };
+
+    const PLATFORM_NAMES = {
+      swiggy: 'Swiggy Instamart',
+      blinkit: 'Blinkit',
+      zepto: 'Zepto',
+      bigbasket: 'BigBasket',
+    };
+
     async function comparePrices() {
       const itemsInput = document.getElementById('items').value.trim();
       const city = document.getElementById('city').value.trim() || 'Bengaluru';
       const pincode = document.getElementById('pincode').value.trim();
 
       if (!itemsInput) {
-        showError('Please enter at least one grocery item.');
+        showError('Please enter at least one grocery item.', '');
         return;
       }
 
       const items = itemsInput.split(',').map(i => i.trim()).filter(i => i.length > 0);
       if (items.length === 0) {
-        showError('Please enter valid grocery items separated by commas.');
+        showError('Please enter valid grocery items separated by commas.', '');
         return;
       }
 
       if (items.length > 10) {
-        showError('Please enter 10 items or fewer.');
+        showError('Please enter 10 items or fewer.', '');
         return;
       }
 
-      // Show loading
       document.getElementById('loading').classList.add('active');
       document.getElementById('results').classList.remove('active');
       document.getElementById('error').classList.remove('active');
@@ -453,66 +487,61 @@
         params.set('city', city);
         if (pincode) params.set('pincode', pincode);
 
-        let data = null;
-
-        // Try Molt Bot agent first (live browsing)
-        try {
-          const agentRes = await fetch(`/api/agent-compare?${params.toString()}`);
-          if (agentRes.ok) {
-            const agentData = await agentRes.json();
-            if (agentData.platforms && !agentData.error) {
-              data = agentData;
-            }
-          }
-        } catch {
-          // Agent not available, fall through to demo
-        }
-
-        // Fall back to demo/scraper endpoint
-        if (!data) {
-          const response = await fetch(`/api/compare?${params.toString()}`);
-          data = await response.json();
-        }
+        const response = await fetch(`/api/compare?${params.toString()}`);
+        const data = await response.json();
 
         if (data.error) {
-          showError(data.error);
+          showError(data.error, '');
+          return;
+        }
+
+        if (!data.fetched) {
+          showError(
+            "Couldn't fetch prices from any platform.",
+            'The platforms may be blocking automated requests. You can search manually:',
+            data.searchLinks,
+            items
+          );
           return;
         }
 
         renderResults(data);
       } catch (err) {
-        showError('Failed to fetch prices. Please try again.');
+        showError('Failed to connect to the server. Please try again.', '');
       } finally {
         document.getElementById('loading').classList.remove('active');
         document.getElementById('compareBtn').disabled = false;
       }
     }
 
-    function showError(message) {
+    function showError(message, subtitle, searchLinks, items) {
       document.getElementById('loading').classList.remove('active');
       document.getElementById('compareBtn').disabled = false;
       document.getElementById('error').classList.add('active');
       document.getElementById('errorText').textContent = message;
+      document.getElementById('errorSubtitle').textContent = subtitle || '';
       document.getElementById('results').classList.remove('active');
+
+      const linksEl = document.getElementById('errorLinks');
+      linksEl.innerHTML = '';
+
+      if (searchLinks && items) {
+        for (const [platform, links] of Object.entries(searchLinks)) {
+          const color = PLATFORM_COLORS[platform] || '#888';
+          const name = PLATFORM_NAMES[platform] || platform;
+          // Use the first item's link as a representative search
+          const firstLink = links[items[0]] || Object.values(links)[0];
+          if (firstLink) {
+            linksEl.innerHTML += `<a href="${escapeAttr(firstLink)}" target="_blank" rel="noopener"><span class="link-dot" style="background:${color}"></span>${escapeHtml(name)}</a>`;
+          }
+        }
+      }
     }
 
     function renderResults(data) {
       document.getElementById('error').classList.remove('active');
       document.getElementById('results').classList.add('active');
       document.getElementById('itemsSearched').textContent = data.query.join(', ');
-
-      // Data source badge
-      const badge = document.getElementById('dataSourceBadge');
-      const demoNotice = document.getElementById('demoNotice');
-      if (data.dataSource === 'live' || data.dataSource === 'agent') {
-        badge.textContent = data.dataSource === 'agent' ? 'LIVE (MOLT BOT)' : 'LIVE';
-        badge.className = 'data-source-badge live';
-        demoNotice.classList.remove('active');
-      } else {
-        badge.textContent = 'ESTIMATED';
-        badge.className = 'data-source-badge demo';
-        demoNotice.classList.add('active');
-      }
 
       // Recommendation
       const rec = data.recommendation;
@@ -529,13 +558,10 @@
         recEl.style.display = 'none';
       }
 
-      // Find cheapest platform
       const cheapestPlatform = rec ? rec.platform : null;
-
-      // Sort platforms by total (cheapest first)
       const sortedPlatforms = [...data.platforms].sort((a, b) => a.total - b.total);
+      const searchLinks = data.searchLinks || {};
 
-      // Platform cards
       const container = document.getElementById('platformCards');
       container.innerHTML = '';
 
@@ -545,9 +571,14 @@
         card.className = `platform-card${isCheapest ? ' cheapest' : ''}`;
 
         const badgeHtml = isCheapest ? '<span class="cheapest-badge">CHEAPEST</span>' : '';
+        const platLinks = searchLinks[platform.platform] || {};
 
         let itemsHtml = '';
         for (const item of platform.items) {
+          const searchUrl = (item.product && item.product.link)
+            ? item.product.link
+            : (platLinks[item.query] || '#');
+
           if (item.product) {
             const p = item.product;
             const discountHtml = p.discount ? `<span class="discount">${escapeHtml(p.discount)}</span>` : '';
@@ -558,6 +589,7 @@
                 <div class="item-info">
                   <div class="item-query">${escapeHtml(item.query)}</div>
                   <div class="item-detail">${escapeHtml(p.name)}${brandInfo} - ${escapeHtml(p.quantity)}</div>
+                  <a class="item-link" href="${escapeAttr(searchUrl)}" target="_blank" rel="noopener">View on ${escapeHtml(platform.displayName)} &rarr;</a>
                 </div>
                 <div class="item-price">
                   <div class="price">${origPriceHtml}\u20B9${p.price}</div>
@@ -569,6 +601,7 @@
               <div class="item-row">
                 <div class="item-info">
                   <div class="item-query">${escapeHtml(item.query)}</div>
+                  <a class="item-link" href="${escapeAttr(searchUrl)}" target="_blank" rel="noopener">Search on ${escapeHtml(platform.displayName)} &rarr;</a>
                 </div>
                 <div class="item-price">
                   <span class="not-found">Not found</span>
@@ -584,7 +617,7 @@
               <span>${escapeHtml(platform.displayName)}</span>
               ${badgeHtml}
             </div>
-            <div class="platform-total">\u20B9${platform.total.toFixed(0)}</div>
+            <div class="platform-total">${platform.total > 0 ? '\u20B9' + platform.total.toFixed(0) : '-'}</div>
           </div>
           <div class="platform-items">${itemsHtml}</div>`;
 
@@ -598,7 +631,10 @@
       return div.innerHTML;
     }
 
-    // Enter key support
+    function escapeAttr(text) {
+      return text.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
     document.getElementById('items').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
