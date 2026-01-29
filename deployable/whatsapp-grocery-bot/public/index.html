@@ -163,6 +163,28 @@
       font-size: 13px;
     }
 
+    .data-source-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 12px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .data-source-badge.demo {
+      background: #3a3000;
+      color: #f5c518;
+      border: 1px solid #5a4a00;
+    }
+
+    .data-source-badge.live {
+      background: #0f250f;
+      color: #4CAF50;
+      border: 1px solid #2d5a2d;
+    }
+
     .recommendation {
       background: linear-gradient(135deg, #1b3a1b, #0f250f);
       border: 1px solid #2d5a2d;
@@ -218,6 +240,7 @@
     .platform-dot.swiggy { background: #fc8019; }
     .platform-dot.blinkit { background: #f5c518; }
     .platform-dot.zepto { background: #7b2ff7; }
+    .platform-dot.bigbasket { background: #84c225; }
 
     .platform-name span {
       font-weight: 600;
@@ -281,6 +304,13 @@
       color: #fff;
     }
 
+    .item-price .original-price {
+      font-size: 12px;
+      color: #666;
+      text-decoration: line-through;
+      margin-right: 6px;
+    }
+
     .item-price .discount {
       font-size: 11px;
       color: #4CAF50;
@@ -308,6 +338,20 @@
       font-size: 14px;
     }
 
+    .demo-notice {
+      background: #2a2400;
+      border: 1px solid #4a3a00;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #d4a800;
+      text-align: center;
+      display: none;
+    }
+
+    .demo-notice.active { display: block; }
+
     footer {
       text-align: center;
       padding: 32px 0;
@@ -325,7 +369,7 @@
   <div class="container">
     <header>
       <h1>Grocery Price Checker</h1>
-      <p>Compare prices across Swiggy Instamart, Blinkit &amp; Zepto</p>
+      <p>Compare prices across Swiggy Instamart, Blinkit, Zepto &amp; BigBasket</p>
     </header>
 
     <div class="input-section">
@@ -357,8 +401,11 @@
 
     <div class="results" id="results">
       <div class="results-header">
-        <h2>Price Comparison</h2>
+        <h2>Price Comparison <span class="data-source-badge" id="dataSourceBadge"></span></h2>
         <span class="items-searched" id="itemsSearched"></span>
+      </div>
+      <div class="demo-notice" id="demoNotice">
+        Showing estimated prices based on recent market data. Live price fetching from platforms is being improved.
       </div>
       <div class="recommendation" id="recommendation" style="display:none">
         <h3 id="recTitle"></h3>
@@ -368,7 +415,7 @@
     </div>
 
     <footer>
-      <p>Prices fetched in real-time. Results may vary by location.</p>
+      <p>Prices are estimates based on recent market data. Actual prices may vary by location and time.</p>
     </footer>
   </div>
 
@@ -436,12 +483,29 @@
       document.getElementById('results').classList.add('active');
       document.getElementById('itemsSearched').textContent = data.query.join(', ');
 
+      // Data source badge
+      const badge = document.getElementById('dataSourceBadge');
+      const demoNotice = document.getElementById('demoNotice');
+      if (data.dataSource === 'live') {
+        badge.textContent = 'LIVE';
+        badge.className = 'data-source-badge live';
+        demoNotice.classList.remove('active');
+      } else {
+        badge.textContent = 'ESTIMATED';
+        badge.className = 'data-source-badge demo';
+        demoNotice.classList.add('active');
+      }
+
       // Recommendation
       const rec = data.recommendation;
       const recEl = document.getElementById('recommendation');
       if (rec && rec.savings > 0) {
         recEl.style.display = 'block';
         document.getElementById('recTitle').textContent = `${rec.platform} is the cheapest!`;
+        document.getElementById('recMessage').textContent = rec.message;
+      } else if (rec) {
+        recEl.style.display = 'block';
+        document.getElementById('recTitle').textContent = rec.platform;
         document.getElementById('recMessage').textContent = rec.message;
       } else {
         recEl.style.display = 'none';
@@ -450,11 +514,14 @@
       // Find cheapest platform
       const cheapestPlatform = rec ? rec.platform : null;
 
+      // Sort platforms by total (cheapest first)
+      const sortedPlatforms = [...data.platforms].sort((a, b) => a.total - b.total);
+
       // Platform cards
       const container = document.getElementById('platformCards');
       container.innerHTML = '';
 
-      for (const platform of data.platforms) {
+      for (const platform of sortedPlatforms) {
         const isCheapest = platform.displayName === cheapestPlatform;
         const card = document.createElement('div');
         card.className = `platform-card${isCheapest ? ' cheapest' : ''}`;
@@ -465,15 +532,17 @@
         for (const item of platform.items) {
           if (item.product) {
             const p = item.product;
-            const discountHtml = p.discount ? `<span class="discount">${p.discount}</span>` : '';
+            const discountHtml = p.discount ? `<span class="discount">${escapeHtml(p.discount)}</span>` : '';
+            const origPriceHtml = p.originalPrice ? `<span class="original-price">\u20B9${p.originalPrice}</span>` : '';
+            const brandInfo = p.brand ? ` (${escapeHtml(p.brand)})` : '';
             itemsHtml += `
               <div class="item-row">
                 <div class="item-info">
                   <div class="item-query">${escapeHtml(item.query)}</div>
-                  <div class="item-detail">${escapeHtml(p.name)} - ${escapeHtml(p.quantity)}</div>
+                  <div class="item-detail">${escapeHtml(p.name)}${brandInfo} - ${escapeHtml(p.quantity)}</div>
                 </div>
                 <div class="item-price">
-                  <div class="price">\u20B9${p.price}</div>
+                  <div class="price">${origPriceHtml}\u20B9${p.price}</div>
                   ${discountHtml}
                 </div>
               </div>`;
